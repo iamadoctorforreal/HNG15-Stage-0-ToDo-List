@@ -138,39 +138,64 @@ export function App() {
     });
   };
 
-  // Handle Add / Edit submit
+  // Handle Add / Edit submit with resilient state
   const handleModalSubmit = async (formData) => {
     if (editingTodo) {
       setTodos(prev => prev.map(t => t.id === editingTodo.id ? { ...t, ...formData } : t));
-      const updated = await api.updateTodo(editingTodo.id, formData);
-      setTodos(prev => prev.map(t => t.id === editingTodo.id ? updated : t));
+      if (!String(editingTodo.id).startsWith('fallback-')) {
+        try {
+          const updated = await api.updateTodo(editingTodo.id, formData);
+          setTodos(prev => prev.map(t => t.id === editingTodo.id ? updated : t));
+        } catch (e) {
+          console.warn("Could not sync edit to cloud immediately, kept local:", e);
+        }
+      }
     } else {
-      const created = await api.createTodo(formData);
-      setTodos(prev => [created, ...prev]);
+      const tempId = `local-${Date.now()}`;
+      const optimisticTodo = { 
+        id: tempId, 
+        ...formData, 
+        completed: false, 
+        created_at: new Date().toISOString() 
+      };
+      setTodos(prev => [optimisticTodo, ...prev]);
+      try {
+        const created = await api.createTodo(formData);
+        setTodos(prev => prev.map(t => t.id === tempId ? created : t));
+      } catch (e) {
+        console.warn("Could not sync new todo to cloud immediately, kept local:", e);
+      }
     }
   };
 
-  // Toggle completion
+  // Toggle completion: resilient and never reverts on transient network error
   const handleToggleTodo = async (id) => {
     setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    
+    // If it's a client fallback id, maintain local state
+    if (typeof id === 'string' && id.startsWith('fallback-')) {
+      return;
+    }
+
     try {
       const updated = await api.toggleTodo(id);
       setTodos(prev => prev.map(t => t.id === id ? updated : t));
     } catch (err) {
-      console.error(err);
-      setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+      console.warn("Cloud sync pending, keeping your toggle state active:", err);
+      // DO NOT revert the toggle; keep user's completed state intact!
     }
   };
 
-  // Delete todo
+  // Delete todo: resilient local removal
   const handleDeleteTodo = async (id) => {
-    const backup = [...todos];
     setTodos(prev => prev.filter(t => t.id !== id));
+    if (typeof id === 'string' && id.startsWith('fallback-')) {
+      return;
+    }
     try {
       await api.deleteTodo(id);
     } catch (err) {
-      console.error(err);
-      setTodos(backup);
+      console.warn("Cloud delete pending, keeping item removed locally:", err);
     }
   };
 

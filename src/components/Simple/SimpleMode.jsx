@@ -211,9 +211,9 @@ export const SimpleMode = ({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -30, scale: 0.95 }}
                 transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                className={`glass-card rounded-2xl p-4 shadow-sm border transition-all duration-200 group ${
+                className={`glass-card rounded-2xl p-4 shadow-sm border transition-all duration-300 group ${
                   todo.completed
-                    ? 'opacity-70 bg-slate-50/60 dark:bg-slate-900/40'
+                    ? 'opacity-60 saturate-50 bg-slate-100/50 dark:bg-slate-900/40 border-dashed border-slate-300/60 dark:border-slate-800/60'
                     : 'hover:shadow-md'
                 }`}
               >
@@ -240,7 +240,7 @@ export const SimpleMode = ({
                         onClick={() => handleToggle(todo.id, todo.completed)}
                         className={`text-sm font-semibold cursor-pointer select-none transition-all ${
                           todo.completed
-                            ? 'line-through text-slate-400 dark:text-slate-500'
+                            ? 'line-through decoration-pink-500/80 dark:decoration-purple-400 decoration-2 text-slate-400 dark:text-slate-500'
                             : 'text-slate-800 dark:text-slate-100 hover:text-pink-600 dark:hover:text-pink-300'
                         }`}
                       >
