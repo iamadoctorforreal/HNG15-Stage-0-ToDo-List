@@ -20,7 +20,7 @@ const BOTANICAL_NODES = [
 export const FloatingBotanicals = () => {
   const [ripples, setRipples] = useState({});
 
-  const handleFlowerHover = (nodeId) => {
+  const handleFlowerInteract = (nodeId) => {
     // Play leaf rustle sound
     sounds.playRustle();
 
@@ -57,8 +57,8 @@ export const FloatingBotanicals = () => {
             <motion.div
               className={`relative cursor-pointer pointer-events-auto transition-opacity duration-700 ${
                 node.subtle
-                  ? 'opacity-25 dark:opacity-15 hover:opacity-70 dark:hover:opacity-60'
-                  : 'opacity-40 dark:opacity-30 hover:opacity-95 dark:hover:opacity-85'
+                  ? 'opacity-35 dark:opacity-25 hover:opacity-85 dark:hover:opacity-75'
+                  : 'opacity-55 dark:opacity-45 hover:opacity-100 dark:hover:opacity-95'
               }`}
               style={{
                 scale: node.scale,
@@ -76,10 +76,14 @@ export const FloatingBotanicals = () => {
                 delay: node.delay,
               }}
               whileHover={{
-                scale: node.scale * 1.14,
+                scale: node.scale * 1.16,
                 transition: { type: 'spring', stiffness: 350, damping: 18 },
               }}
-              onMouseEnter={() => handleFlowerHover(node.id)}
+              whileTap={{
+                scale: node.scale * 0.95,
+              }}
+              onMouseEnter={() => handleFlowerInteract(node.id)}
+              onClick={() => handleFlowerInteract(node.id)}
             >
               {/* Expanding Ripple waves on hover */}
               <AnimatePresence>

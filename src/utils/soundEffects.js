@@ -49,39 +49,44 @@ class SoundEngine {
     return this.enabled;
   }
 
-  // Soft leaf/flower rustle on hover
+  // Organic leaf/flower rustle on hover & click
   playRustle() {
     if (!this.enabled) return;
     try {
       this.init();
       if (!this.ctx) return;
 
-      const bufferSize = this.ctx.sampleRate * 0.15; // 150ms
+      const duration = 0.28;
+      const bufferSize = Math.floor(this.ctx.sampleRate * duration);
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
 
-      // Gentle pink-ish noise with rapid decay
-      let b0 = 0, b1 = 0;
+      // Organic foliage noise (layered pink + filtered white noise)
+      let b0 = 0, b1 = 0, b2 = 0;
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
-        b0 = 0.99 * b0 + white * 0.05;
-        b1 = 0.95 * b1 + white * 0.03;
-        const decay = Math.pow(1 - (i / bufferSize), 2);
-        data[i] = (b0 + b1) * decay * 0.4;
+        b0 = 0.99 * b0 + white * 0.08;
+        b1 = 0.94 * b1 + white * 0.05;
+        b2 = 0.88 * b2 + white * 0.03;
+        const progress = i / bufferSize;
+        // Smooth swell and decay envelope
+        const envelope = Math.sin(progress * Math.PI) * Math.pow(1 - progress, 1.2);
+        data[i] = (b0 + b1 + b2) * envelope * 0.55;
       }
 
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
 
-      // Bandpass filter to sound like soft foliage
+      // Bandpass filter to sound like rustling silk petals & dry leaves
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(800 + Math.random() * 300, this.ctx.currentTime);
-      filter.Q.setValueAtTime(1.8, this.ctx.currentTime);
+      filter.frequency.setValueAtTime(1200 + Math.random() * 400, this.ctx.currentTime);
+      filter.Q.setValueAtTime(2.2, this.ctx.currentTime);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.32, this.ctx.currentTime + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
       noise.connect(filter);
       filter.connect(gain);
@@ -89,7 +94,7 @@ class SoundEngine {
 
       noise.start();
     } catch (e) {
-      // Audio might be blocked before user gesture
+      console.warn("Audio rustle error:", e);
     }
   }
 

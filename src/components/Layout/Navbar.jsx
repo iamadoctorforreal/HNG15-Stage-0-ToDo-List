@@ -4,7 +4,7 @@ import { Sun, Moon, Volume2, VolumeX, Sparkles, ListTodo, Calendar, Heart } from
 import { useApp } from '../../context/ThemeContext';
 import { sounds } from '../../utils/soundEffects';
 
-export const Navbar = ({ isConnected }) => {
+export const Navbar = ({ isConnected, currentUser, onLogout }) => {
   const { theme, toggleTheme, mode, switchMode, soundOn, toggleSound } = useApp();
 
   return (
@@ -79,8 +79,16 @@ export const Navbar = ({ isConnected }) => {
           </button>
         </div>
 
-        {/* Right Controls: Sound & Theme */}
+        {/* Right Controls: User Profile + Sound + Theme */}
         <div className="flex items-center gap-2">
+          {/* User Badge */}
+          {currentUser && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-pink-100/70 dark:bg-purple-950/60 border border-pink-200/50 dark:border-purple-800/40 text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+              <span>🌸</span>
+              <span className="max-w-[100px] truncate">{currentUser.name}</span>
+            </div>
+          )}
+
           {/* Sound Toggle */}
           <motion.button
             whileTap={{ scale: 0.92 }}
@@ -110,6 +118,18 @@ export const Navbar = ({ isConnected }) => {
               <Moon className="w-4 h-4 text-purple-700" />
             )}
           </motion.button>
+
+          {/* Logout / Exit to Landing */}
+          {currentUser && (
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={onLogout}
+              title="Sign Out / Back to Landing"
+              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+            >
+              Sign Out
+            </motion.button>
+          )}
         </div>
 
       </div>
