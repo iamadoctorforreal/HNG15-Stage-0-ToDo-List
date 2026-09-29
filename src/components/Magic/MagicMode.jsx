@@ -165,15 +165,62 @@ export const MagicMode = ({
       </div>
 
       {/* Swipeable Card Container */}
-      <div className="relative w-full h-[460px] flex items-center justify-center">
+      <div className="relative w-full h-[470px] flex items-center justify-center">
         
-        {/* Visual Background Cards (Stack Effect) */}
-        {validIndex + 2 < todos.length && (
-          <div className="absolute w-[86%] h-[400px] rounded-3xl bg-pink-100/40 dark:bg-purple-950/20 border border-pink-200/30 dark:border-purple-900/20 translate-y-8 scale-90 blur-[1px] pointer-events-none" />
-        )}
-        {validIndex + 1 < todos.length && (
-          <div className="absolute w-[93%] h-[420px] rounded-3xl bg-pink-100/70 dark:bg-purple-950/40 border border-pink-200/50 dark:border-purple-900/40 translate-y-4 scale-95 pointer-events-none transition-all duration-300" />
-        )}
+        {/* Deep Stack Card (3rd in line) */}
+        {validIndex + 2 < todos.length && (() => {
+          const thirdTodo = todos[validIndex + 2];
+          return (
+            <div 
+              key={`third-${thirdTodo.id}`}
+              className="absolute w-[86%] h-[420px] rounded-3xl p-6 glass-card border border-pink-200/40 dark:border-purple-900/30 translate-y-7 scale-90 blur-[0.6px] opacity-40 pointer-events-none select-none transition-all duration-300 flex flex-col justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <span>{thirdTodo.flower === 'rose' ? '🌸' : thirdTodo.flower === 'daffodil' ? '🌼' : '🪻'}</span>
+                <span className="text-xs font-serif font-semibold text-slate-400 truncate">{thirdTodo.title}</span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Immediate Next Card (2nd in line - peeking directly underneath!) */}
+        {validIndex + 1 < todos.length && (() => {
+          const nextTodo = todos[validIndex + 1];
+          return (
+            <div 
+              key={`next-${nextTodo.id}`}
+              className="absolute w-[93%] h-[445px] rounded-3xl p-7 glass-card border border-pink-300/70 dark:border-purple-800/50 translate-y-3.5 scale-95 opacity-85 shadow-lg pointer-events-none select-none transition-all duration-300 flex flex-col justify-between overflow-hidden"
+            >
+              {/* Peek Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{nextTodo.flower === 'rose' ? '🌸' : nextTodo.flower === 'daffodil' ? '🌼' : '🪻'}</span>
+                  <span className="font-serif text-xs font-semibold text-slate-500 dark:text-slate-400 capitalize">
+                    {nextTodo.flower || 'rose'} Sanctuary
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-pink-100/70 dark:bg-purple-950/60 text-pink-700 dark:text-pink-300">
+                  Up next
+                </span>
+              </div>
+
+              {/* Peek Title & Note */}
+              <div className="my-auto py-2">
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-slate-700/80 dark:text-pink-200/80 line-clamp-2">
+                  {nextTodo.title}
+                </h3>
+                {nextTodo.note && (
+                  <p className="text-xs text-slate-400 line-clamp-2 mt-1 font-sans leading-relaxed">{nextTodo.note}</p>
+                )}
+              </div>
+
+              <div className="text-[10px] text-slate-400 font-mono flex items-center justify-between">
+                <span>Swipe left to reveal</span>
+                <span>{nextTodo.priority ? `${nextTodo.priority} priority` : ''}</span>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Active Draggable Card */}
         <AnimatePresence custom={direction} mode="wait">

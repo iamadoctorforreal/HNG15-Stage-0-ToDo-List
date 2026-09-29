@@ -123,42 +123,62 @@ class SoundEngine {
     } catch (e) {}
   }
 
-  // Soft whoosh when swiping cards in Magic mode
+  // Crisp card slide & whoosh sound for Magic Mode swiping
   playSwipe() {
     if (!this.enabled) return;
     try {
       this.init();
       if (!this.ctx) return;
 
-      const bufferSize = this.ctx.sampleRate * 0.22;
+      const duration = 0.28;
+      const bufferSize = Math.floor(this.ctx.sampleRate * duration);
       const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const data = buffer.getChannelData(0);
 
+      // Card friction whoosh texture
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
         const env = Math.sin((i / bufferSize) * Math.PI);
-        data[i] = white * env * 0.3;
+        data[i] = white * env * 0.5;
       }
 
       const noise = this.ctx.createBufferSource();
       noise.buffer = buffer;
 
+      // Bandpass sweep to mimic paper / silk card sliding across deck
       const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(300, this.ctx.currentTime);
-      filter.frequency.linearRampToValueAtTime(950, this.ctx.currentTime + 0.1);
-      filter.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.22);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(600, this.ctx.currentTime);
+      filter.frequency.exponentialRampToValueAtTime(2400, this.ctx.currentTime + 0.12);
+      filter.frequency.exponentialRampToValueAtTime(450, this.ctx.currentTime + duration);
+      filter.Q.setValueAtTime(1.5, this.ctx.currentTime);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.14, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.22);
+      gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.35, this.ctx.currentTime + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
 
       noise.connect(filter);
       filter.connect(gain);
       gain.connect(this.ctx.destination);
 
       noise.start();
-    } catch (e) {}
+
+      // Subtle tactile slide click accompanying the whoosh
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.06);
+      oscGain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+      osc.connect(oscGain);
+      oscGain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.07);
+    } catch (e) {
+      console.warn("Swipe sound error:", e);
+    }
   }
 
   // Joyful floral chime on completing a task
