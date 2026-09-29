@@ -82,19 +82,8 @@ class TodoResponse(BaseModel):
     created_at: str
     updated_at: str
 
-@app.get("/")
-def root():
-    return {
-        "app": "🌸 Bloom Floral To-Do & Notes API",
-        "status": "online",
-        "database": "firebase_firestore_connected",
-        "documentation": "/docs",
-        "endpoints": {
-            "get_todos": "/api/todos",
-            "create_todo": "POST /api/todos",
-            "health_check": "/api/health"
-        }
-    }
+# Serve built frontend from dist if present (unified local development)
+dist_path = Path(__file__).resolve().parent.parent / "dist"
 
 @app.get("/api/health")
 @app.get("/health")
@@ -298,3 +287,22 @@ def delete_todo(todo_id: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting todo: {str(e)}"
         )
+
+# Serve Frontend SPA from dist
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+if dist_path.exists():
+    assets_dir = dist_path / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}")
+    def serve_frontend(full_path: str = ""):
+        # Don't intercept API or docs routes
+        if full_path.startswith("api") or full_path in ["docs", "redoc", "openapi.json", "health"]:
+            raise HTTPException(status_code=404, detail="Not found")
+        target_file = dist_path / full_path
+        if full_path and target_file.exists() and target_file.is_file():
+            return FileResponse(str(target_file))
+        return FileResponse(str(dist_path / "index.html"))
