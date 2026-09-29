@@ -82,7 +82,22 @@ class TodoResponse(BaseModel):
     created_at: str
     updated_at: str
 
+@app.get("/")
+def root():
+    return {
+        "app": "🌸 Bloom Floral To-Do & Notes API",
+        "status": "online",
+        "database": "firebase_firestore_connected",
+        "documentation": "/docs",
+        "endpoints": {
+            "get_todos": "/api/todos",
+            "create_todo": "POST /api/todos",
+            "health_check": "/api/health"
+        }
+    }
+
 @app.get("/api/health")
+@app.get("/health")
 def health_check():
     try:
         db = get_firestore_client()
@@ -100,6 +115,7 @@ def health_check():
         }
 
 @app.get("/api/todos", response_model=List[TodoResponse])
+@app.get("/todos", response_model=List[TodoResponse])
 def get_todos():
     try:
         db = get_firestore_client()
