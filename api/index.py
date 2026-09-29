@@ -1,8 +1,9 @@
 import os
+import re
 import datetime
 from typing import Optional, List
 from pathlib import Path
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import firebase_admin
@@ -44,7 +45,7 @@ def get_firestore_client():
 
 app = FastAPI(
     title="Bloom Floral To-Do & Notes API",
-    description="Full-stack FastAPI backend powered by Firebase Firestore",
+    description="Full-stack FastAPI backend powered by Firebase Firestore with per-user data isolation",
     version="1.0.0"
 )
 
@@ -82,6 +83,60 @@ class TodoResponse(BaseModel):
     created_at: str
     updated_at: str
 
+# Pre-populated seed data
+DEMO_SEED_ITEMS = [
+    {
+        "title": "Buy from Temu",
+        "note": "I just need to order already",
+        "flower": "rose",
+        "priority": "high",
+        "completed": False,
+    },
+    {
+        "title": "Review HNG 15 Stage 0 submission criteria 🌸",
+        "note": "Verify live Vercel URL, GitHub repository, clean Apple aesthetics, and responsive layout.",
+        "flower": "rose",
+        "priority": "high",
+        "completed": True,
+    },
+    {
+        "title": "Pick fresh lavender from the morning garden 🪻",
+        "note": "Place a small bundle on the nightstand for soothing lavender aroma and peaceful focus.",
+        "flower": "lavender",
+        "priority": "medium",
+        "completed": False,
+    },
+    {
+        "title": "Hydrate and stretch in the warm sunlight 🌼",
+        "note": "Step away from the screen for 10 minutes of deep breathing and sunshine.",
+        "flower": "daffodil",
+        "priority": "low",
+        "completed": True,
+    }
+]
+
+NEW_USER_SEED_ITEM = {
+    "title": "Welcome to your personal sanctuary 🌸",
+    "note": "Tap here to view notes or mark as done. Switch between Simple and Magic modes above to experience Bloom!",
+    "flower": "rose",
+    "priority": "medium",
+    "completed": False,
+}
+
+def get_user_todos_collection(user_id: Optional[str] = None):
+    """
+    Returns the isolated Firestore collection reference for this specific user.
+    Path: users/{clean_id}/todos
+    This ensures 100% data isolation: User A's todos are physically separated from User B's.
+    """
+    clean_id = (user_id or "demo").strip().lower()
+    if not clean_id or clean_id == "demo@bloom.app":
+        clean_id = "demo"
+    # Sanitize document key: allow alphanumeric, hyphens, dots, underscores, @
+    clean_id = re.sub(r'[^a-z0-9_\-\.@]', '_', clean_id)
+    db = get_firestore_client()
+    return db.collection("users").document(clean_id).collection("todos"), clean_id
+
 # Serve built frontend from dist if present (unified local development)
 dist_path = Path(__file__).resolve().parent.parent / "dist"
 
@@ -94,6 +149,7 @@ def health_check():
             "status": "healthy",
             "database": "firebase_firestore_connected",
             "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+            "isolation": "per_user_subcollections",
             "timestamp": datetime.datetime.utcnow().isoformat()
         }
     except Exception as e:
@@ -105,11 +161,34 @@ def health_check():
 
 @app.get("/api/todos", response_model=List[TodoResponse])
 @app.get("/todos", response_model=List[TodoResponse])
-def get_todos():
+def get_todos(
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
     try:
-        db = get_firestore_client()
-        todos_ref = db.collection("todos")
-        docs = todos_ref.stream()
+        effective_user = user_id or x_user_id or "demo"
+        todos_ref, clean_id = get_user_todos_collection(effective_user)
+        docs = list(todos_ref.stream())
+
+        # If user has no todos yet: auto-populate
+        if len(docs) == 0:
+            now = datetime.datetime.utcnow().isoformat()
+            if clean_id == "demo":
+                seed_items = DEMO_SEED_ITEMS
+            else:
+                # Any newly created profile starts with exactly ONE single sample to-do
+                seed_items = [NEW_USER_SEED_ITEM]
+
+            for item in seed_items:
+                data = {
+                    **item,
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                todos_ref.add(data)
+
+            # Re-fetch after seeding
+            docs = list(todos_ref.stream())
 
         todo_list = []
         for doc in docs:
@@ -135,9 +214,14 @@ def get_todos():
         )
 
 @app.post("/api/todos", response_model=TodoResponse, status_code=status.HTTP_201_CREATED)
-def create_todo(todo: TodoCreate):
+def create_todo(
+    todo: TodoCreate,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
     try:
-        db = get_firestore_client()
+        effective_user = user_id or x_user_id or "demo"
+        todos_ref, clean_id = get_user_todos_collection(effective_user)
         now = datetime.datetime.utcnow().isoformat()
         todo_data = {
             "title": todo.title.strip(),
@@ -149,7 +233,7 @@ def create_todo(todo: TodoCreate):
             "updated_at": now,
         }
 
-        update_time, doc_ref = db.collection("todos").add(todo_data)
+        update_time, doc_ref = todos_ref.add(todo_data)
         return {
             "id": doc_ref.id,
             **todo_data
@@ -161,10 +245,15 @@ def create_todo(todo: TodoCreate):
         )
 
 @app.get("/api/todos/{todo_id}", response_model=TodoResponse)
-def get_todo(todo_id: str):
+def get_todo(
+    todo_id: str,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
     try:
-        db = get_firestore_client()
-        doc = db.collection("todos").document(todo_id).get()
+        effective_user = user_id or x_user_id or "demo"
+        todos_ref, clean_id = get_user_todos_collection(effective_user)
+        doc = todos_ref.document(todo_id).get()
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Todo not found")
         data = doc.to_dict()
@@ -187,10 +276,16 @@ def get_todo(todo_id: str):
         )
 
 @app.put("/api/todos/{todo_id}", response_model=TodoResponse)
-def update_todo(todo_id: str, updates: TodoUpdate):
+def update_todo(
+    todo_id: str,
+    updates: TodoUpdate,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
     try:
-        db = get_firestore_client()
-        doc_ref = db.collection("todos").document(todo_id)
+        effective_user = user_id or x_user_id or "demo"
+        todos_ref, clean_id = get_user_todos_collection(effective_user)
+        doc_ref = todos_ref.document(todo_id)
         doc = doc_ref.get()
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Todo not found")
@@ -232,10 +327,15 @@ def update_todo(todo_id: str, updates: TodoUpdate):
         )
 
 @app.patch("/api/todos/{todo_id}/toggle", response_model=TodoResponse)
-def toggle_todo(todo_id: str):
+def toggle_todo(
+    todo_id: str,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
     try:
-        db = get_firestore_client()
-        doc_ref = db.collection("todos").document(todo_id)
+        effective_user = user_id or x_user_id or "demo"
+        todos_ref, clean_id = get_user_todos_collection(effective_user)
+        doc_ref = todos_ref.document(todo_id)
         doc = doc_ref.get()
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Todo not found")
@@ -270,16 +370,21 @@ def toggle_todo(todo_id: str):
         )
 
 @app.delete("/api/todos/{todo_id}")
-def delete_todo(todo_id: str):
+def delete_todo(
+    todo_id: str,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
     try:
-        db = get_firestore_client()
-        doc_ref = db.collection("todos").document(todo_id)
+        effective_user = user_id or x_user_id or "demo"
+        todos_ref, clean_id = get_user_todos_collection(effective_user)
+        doc_ref = todos_ref.document(todo_id)
         doc = doc_ref.get()
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Todo not found")
 
         doc_ref.delete()
-        return {"status": "deleted", "id": todo_id}
+        return {"status": "deleted", "id": todo_id, "user_id": clean_id}
     except HTTPException:
         raise
     except Exception as e:

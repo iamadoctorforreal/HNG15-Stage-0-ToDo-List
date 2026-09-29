@@ -8,7 +8,7 @@ import { LandingPage } from './components/Landing/LandingPage';
 import { AuthModal } from './components/Auth/AuthModal';
 import { TodoModal } from './components/Modals/TodoModal';
 import { useApp } from './context/ThemeContext';
-import { api } from './utils/api';
+import { api, setApiUserId } from './utils/api';
 import { sounds } from './utils/soundEffects';
 
 export function App() {
@@ -31,16 +31,30 @@ export function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState(null);
 
-  // Load todos from FastAPI / Firebase
-  const loadTodos = async () => {
+  const getEffectiveUserId = (user) => {
+    if (!user || user.isDemo || user.email === 'demo@bloom.app') {
+      return 'demo';
+    }
+    return user.email.trim().toLowerCase();
+  };
+
+  // Load todos from FastAPI / Firebase with per-user isolation
+  const loadTodos = async (userToLoad = currentUser) => {
+    if (!userToLoad) return;
+    const uid = getEffectiveUserId(userToLoad);
+    setApiUserId(uid);
     try {
       setLoading(true);
-      const data = await api.getTodos();
-      
-      // If Firestore is brand new or fallback, populate with your exact 4 tasks!
-      if (!data || data.length === 0) {
-        const seedItems = [
+      const data = await api.getTodos(uid);
+      setTodos(Array.isArray(data) ? data : []);
+      setIsConnected(true);
+    } catch (err) {
+      console.error("Error loading todos:", err);
+      // Fallback offline state if backend cannot be reached
+      if (uid === 'demo') {
+        setTodos([
           {
+            id: 'fallback-demo-1',
             title: "Buy from Temu",
             note: "I just need to order already",
             flower: "rose",
@@ -48,6 +62,7 @@ export function App() {
             completed: false,
           },
           {
+            id: 'fallback-demo-2',
             title: "Review HNG 15 Stage 0 submission criteria 🌸",
             note: "Verify live Vercel URL, GitHub repository, clean Apple aesthetics, and responsive layout.",
             flower: "rose",
@@ -55,6 +70,7 @@ export function App() {
             completed: true,
           },
           {
+            id: 'fallback-demo-3',
             title: "Pick fresh lavender from the morning garden 🪻",
             note: "Place a small bundle on the nightstand for soothing lavender aroma and peaceful focus.",
             flower: "lavender",
@@ -62,31 +78,27 @@ export function App() {
             completed: false,
           },
           {
+            id: 'fallback-demo-4',
             title: "Hydrate and stretch in the warm sunlight 🌼",
             note: "Step away from the screen for 10 minutes of deep breathing and sunshine.",
             flower: "daffodil",
             priority: "low",
             completed: true,
           }
-        ];
-
-        // Seed to Firestore
-        const createdList = [];
-        for (const item of seedItems) {
-          try {
-            const created = await api.createTodo(item);
-            createdList.push(created);
-          } catch (e) {
-            console.error("Seed error:", e);
-          }
-        }
-        setTodos(createdList.length > 0 ? createdList : []);
+        ]);
       } else {
-        setTodos(data);
+        // Any newly created profile has exactly ONE sample task
+        setTodos([
+          {
+            id: 'fallback-new-user-1',
+            title: "Welcome to your personal sanctuary 🌸",
+            note: "Tap here to view notes or mark as done. Switch between Simple and Magic modes above to experience Bloom!",
+            flower: "rose",
+            priority: "medium",
+            completed: false,
+          }
+        ]);
       }
-      setIsConnected(true);
-    } catch (err) {
-      console.error("Error loading todos:", err);
       setIsConnected(false);
     } finally {
       setLoading(false);
@@ -95,7 +107,7 @@ export function App() {
 
   useEffect(() => {
     if (currentUser) {
-      loadTodos();
+      loadTodos(currentUser);
     }
   }, [currentUser]);
 
@@ -105,12 +117,14 @@ export function App() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bloom_current_user', JSON.stringify(user));
     }
-    loadTodos();
+    loadTodos(user);
   };
 
   const handleLogout = () => {
     sounds.playPop();
     setCurrentUser(null);
+    setTodos([]);
+    setApiUserId('demo');
     if (typeof window !== 'undefined') {
       localStorage.removeItem('bloom_current_user');
     }

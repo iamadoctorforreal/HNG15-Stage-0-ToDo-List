@@ -1,8 +1,26 @@
-// API client for Bloom backend
+// API client for Bloom backend with Multi-User Data Isolation
 // Supports both unified deployments (/api) and separate Vercel deployments (VITE_API_URL)
 const API_BASE = (import.meta.env?.VITE_API_URL || '/api').replace(/\/$/, '');
 
+let activeUserId = 'demo';
+
+export const setApiUserId = (userId) => {
+  activeUserId = (userId || 'demo').trim().toLowerCase();
+};
+
+export const getApiUserId = () => activeUserId;
+
+const getHeaders = (extra = {}) => ({
+  'Content-Type': 'application/json',
+  'X-User-Id': activeUserId,
+  ...extra,
+});
+
 export const api = {
+  setUserId(userId) {
+    setApiUserId(userId);
+  },
+
   // Check health and firebase connectivity
   async checkHealth() {
     try {
@@ -14,9 +32,12 @@ export const api = {
     }
   },
 
-  // Get all todos
-  async getTodos() {
-    const res = await fetch(`${API_BASE}/todos`);
+  // Get all todos for current user
+  async getTodos(userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/todos?user_id=${encodeURIComponent(uid)}`, {
+      headers: { 'X-User-Id': uid }
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || 'Failed to fetch todos');
@@ -25,10 +46,11 @@ export const api = {
   },
 
   // Create a new todo
-  async createTodo(todoData) {
-    const res = await fetch(`${API_BASE}/todos`, {
+  async createTodo(todoData, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/todos?user_id=${encodeURIComponent(uid)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders({ 'X-User-Id': uid }),
       body: JSON.stringify(todoData),
     });
     if (!res.ok) {
@@ -39,10 +61,11 @@ export const api = {
   },
 
   // Update a todo
-  async updateTodo(id, updates) {
-    const res = await fetch(`${API_BASE}/todos/${id}`, {
+  async updateTodo(id, updates, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/todos/${id}?user_id=${encodeURIComponent(uid)}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders({ 'X-User-Id': uid }),
       body: JSON.stringify(updates),
     });
     if (!res.ok) {
@@ -53,9 +76,11 @@ export const api = {
   },
 
   // Toggle todo completion
-  async toggleTodo(id) {
-    const res = await fetch(`${API_BASE}/todos/${id}/toggle`, {
+  async toggleTodo(id, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/todos/${id}/toggle?user_id=${encodeURIComponent(uid)}`, {
       method: 'PATCH',
+      headers: { 'X-User-Id': uid }
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -65,9 +90,11 @@ export const api = {
   },
 
   // Delete a todo
-  async deleteTodo(id) {
-    const res = await fetch(`${API_BASE}/todos/${id}`, {
+  async deleteTodo(id, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/todos/${id}?user_id=${encodeURIComponent(uid)}`, {
       method: 'DELETE',
+      headers: { 'X-User-Id': uid }
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -76,3 +103,4 @@ export const api = {
     return await res.json();
   },
 };
+
