@@ -63,52 +63,68 @@ export const LavenderFlower = ({ className = "w-16 h-32", color = "currentColor"
   </svg>
 );
 
-// Rose with soft petals, stem, leaves, and thorny elegance
-export const RoseFlower = ({ className = "w-20 h-32", color = "currentColor" }) => (
+// Rose with soft petals, extra-long elegant stalk, leaves, and thorny elegance
+export const RoseFlower = ({ className = "w-24 h-48", color = "currentColor" }) => (
   <svg
-    viewBox="0 0 120 240"
+    viewBox="0 0 120 360"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
     className={className}
   >
-    {/* Stem */}
+    {/* Extra Long Graceful Stem */}
     <path
-      d="M60 230 C58 170, 64 110, 60 70"
+      d="M60 350 C54 280, 68 200, 58 130 C54 95, 62 80, 60 68"
       stroke="#6B8564"
       strokeWidth="4"
       strokeLinecap="round"
     />
-    {/* Thorns */}
-    <path d="M58 175 C52 173, 49 178, 48 181 C52 181, 57 179, 58 178" fill="#5A7253" />
-    <path d="M62 135 C68 133, 71 138, 72 141 C68 141, 63 139, 62 138" fill="#5A7253" />
+    
+    {/* Thorns along the long stalk */}
+    <path d="M57 290 C51 288, 48 293, 47 296 C51 296, 56 294, 57 293" fill="#5A7253" />
+    <path d="M63 245 C69 243, 72 248, 73 251 C69 251, 64 249, 63 248" fill="#5A7253" />
+    <path d="M58 190 C52 188, 49 193, 48 196 C52 196, 57 194, 58 193" fill="#5A7253" />
+    <path d="M61 140 C67 138, 70 143, 71 146 C67 146, 62 144, 61 143" fill="#5A7253" />
 
-    {/* Leaves */}
+    {/* Lower Leaf Tier */}
     <path
-      d="M58 150 C38 135, 20 152, 18 165 C34 170, 52 162, 58 155"
+      d="M58 260 C32 245, 12 268, 8 285 C28 290, 50 278, 58 268"
       fill="#7B9974"
     />
     <path
-      d="M58 150 C38 135, 20 152, 18 165"
+      d="M58 260 C32 245, 12 268, 8 285"
       stroke="#5D7956"
       strokeWidth="1.5"
     />
+
+    {/* Middle Leaf Tier */}
     <path
-      d="M62 110 C82 95, 100 112, 102 125 C86 130, 68 122, 62 115"
+      d="M63 210 C88 192, 110 212, 114 228 C94 234, 72 224, 63 216"
       fill="#85A37E"
     />
     <path
-      d="M62 110 C82 95, 100 112, 102 125"
+      d="M63 210 C88 192, 110 212, 114 228"
       stroke="#66825F"
       strokeWidth="1.5"
     />
 
-    {/* Calyx (green base under rose) */}
+    {/* Upper Leaf Tier */}
+    <path
+      d="M57 150 C38 135, 20 152, 18 165 C34 170, 52 162, 57 155"
+      fill="#7B9974"
+    />
+    <path
+      d="M57 150 C38 135, 20 152, 18 165"
+      stroke="#5D7956"
+      strokeWidth="1.5"
+    />
+
+    {/* Calyx (green sepals under rose) */}
     <path
       d="M48 68 C52 76, 68 76, 72 68 C66 82, 54 82, 48 68Z"
       fill="#5A7553"
     />
 
-    {/* Blossom Petals (Romantic Rose Pink gradients/layers) */}
+    {/* Blossom Petals (Romantic Rose Pink layers) */}
     <g>
       {/* Outer Petals */}
       <path

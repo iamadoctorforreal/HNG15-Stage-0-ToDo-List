@@ -113,7 +113,7 @@ export const TodoModal = ({ isOpen, onClose, onSubmit, initialTodo = null }) => 
               {/* Note / Journal Textarea */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                  Botanical Note (optional details)
+                  Notes & Details (optional)
                 </label>
                 <textarea
                   rows={3}
@@ -127,7 +127,7 @@ export const TodoModal = ({ isOpen, onClose, onSubmit, initialTodo = null }) => 
               {/* Flower Selection */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                  Botanical Motif
+                  Flower Palette
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {FLOWER_OPTIONS.map((f) => (

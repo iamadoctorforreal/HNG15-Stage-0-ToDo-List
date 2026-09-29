@@ -1,5 +1,6 @@
 // API client for Bloom backend
-const API_BASE = '/api';
+// Supports both unified deployments (/api) and separate Vercel deployments (VITE_API_URL)
+const API_BASE = (import.meta.env?.VITE_API_URL || '/api').replace(/\/$/, '');
 
 export const api = {
   // Check health and firebase connectivity

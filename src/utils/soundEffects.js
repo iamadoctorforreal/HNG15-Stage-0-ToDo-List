@@ -11,6 +11,21 @@ class SoundEngine {
       if (saved !== null) {
         this.enabled = saved === 'true';
       }
+
+      // Automatically unlock audio on first click, pointer, or key
+      const unlockAudio = () => {
+        this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('mousemove', unlockAudio);
+      };
+
+      window.addEventListener('pointerdown', unlockAudio, { once: true });
+      window.addEventListener('keydown', unlockAudio, { once: true });
+      window.addEventListener('mousemove', unlockAudio, { once: true });
     }
   }
 

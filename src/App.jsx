@@ -7,6 +7,8 @@ import { TodoModal } from './components/Modals/TodoModal';
 import { useApp } from './context/ThemeContext';
 import { api } from './utils/api';
 
+import { CalendarInsights } from './components/Calendar/CalendarInsights';
+
 export function App() {
   const { mode } = useApp();
   const [todos, setTodos] = useState([]);
@@ -129,7 +131,7 @@ export function App() {
   return (
     <div className="min-h-screen relative flex flex-col justify-between selection:bg-pink-300 selection:text-pink-900 pb-16">
       
-      {/* Floating Botanical Background (Fluid SVG Lavender, Rose, Daffodils with ripple & rustle) */}
+      {/* Floating Flowers Background (Fluid SVG Lavender, Rose, Daffodils with ripple & rustle) */}
       <FloatingBotanicals />
 
       {/* Main Top Navigation */}
@@ -137,9 +139,9 @@ export function App() {
         <Navbar isConnected={isConnected} />
       </div>
 
-      {/* Main Content: Switches smoothly between Simple Mode and Magic Mode */}
+      {/* Main Content: Switches smoothly between Simple, Magic, and Calendar Modes */}
       <main className="flex-1 flex flex-col justify-start">
-        {mode === 'simple' ? (
+        {mode === 'simple' && (
           <SimpleMode
             todos={todos}
             loading={loading}
@@ -148,13 +150,23 @@ export function App() {
             onEditTodo={openEditModal}
             onOpenAddModal={openAddModal}
           />
-        ) : (
+        )}
+        
+        {mode === 'magic' && (
           <MagicMode
             todos={todos}
             loading={loading}
             onToggleTodo={handleToggleTodo}
             onDeleteTodo={handleDeleteTodo}
             onEditTodo={openEditModal}
+            onOpenAddModal={openAddModal}
+          />
+        )}
+
+        {mode === 'calendar' && (
+          <CalendarInsights
+            todos={todos}
+            onToggleTodo={handleToggleTodo}
             onOpenAddModal={openAddModal}
           />
         )}
@@ -168,9 +180,9 @@ export function App() {
         initialTodo={editingTodo}
       />
 
-      {/* Footer subtle brand */}
-      <footer className="w-full text-center py-4 text-[11px] text-slate-400 dark:text-slate-600 relative z-10 pointer-events-none">
-        Crafted with botanical care • Fast API + Firebase Firestore + React
+      {/* Footer with HERSPEW credit */}
+      <footer className="w-full text-center py-4 text-xs text-slate-400 dark:text-slate-500 relative z-10 pointer-events-none">
+        Crafted with 🌸 by <span className="font-semibold text-pink-600 dark:text-pink-400">HERSPEW</span> • To-Dos & Notes
       </footer>
 
     </div>
