@@ -202,8 +202,26 @@ export const LandingPage = ({ onOpenAuth, onInstantDemo }) => {
                 </span>
               </div>
 
-              {/* Sample Task 1 */}
-              <div className="space-y-3 py-4">
+              {/* Your Exact Live Tasks Preview */}
+              <div className="space-y-2.5 py-4 max-h-[320px] overflow-y-auto pr-1">
+                {/* Task 1: Buy from Temu */}
+                <div className="p-3 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-pink-200 dark:border-purple-800 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-5 h-5 rounded-full border-2 border-pink-400 dark:border-purple-500"></div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <span>Buy from Temu</span>
+                        <span className="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">High</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        "I just need to order already"
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs">🌸</span>
+                </div>
+
+                {/* Task 2: Review HNG Stage 0 */}
                 <div className="p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 border border-pink-100 dark:border-purple-900/40 shadow-xs flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="w-5 h-5 rounded-full border-2 border-emerald-500 bg-emerald-500 flex items-center justify-center text-white text-[10px]">
@@ -211,39 +229,39 @@ export const LandingPage = ({ onOpenAuth, onInstantDemo }) => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-400 line-through">
-                        Morning garden stroll 🌸
+                        Review HNG 15 Stage 0 🌸
                       </p>
-                      <p className="text-[10px] text-slate-400">Completed with chime sound</p>
+                      <p className="text-[10px] text-slate-400">Verified live Vercel URL & GitHub</p>
                     </div>
                   </div>
                   <span className="text-xs">🌸</span>
                 </div>
 
-                {/* Sample Task 2 (Active) */}
-                <div className="p-3 rounded-2xl bg-white/90 dark:bg-slate-900/80 border border-pink-200 dark:border-purple-800 shadow-sm flex items-center justify-between">
+                {/* Task 3: Pick Fresh Lavender */}
+                <div className="p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 border border-pink-100 dark:border-purple-900/40 shadow-xs flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded-full border-2 border-pink-300 dark:border-purple-600"></div>
+                    <div className="w-5 h-5 rounded-full border-2 border-purple-300 dark:border-purple-700"></div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
-                        Review HNG 15 Stage 0 Task
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                        Pick fresh lavender 🪻
                       </p>
-                      <p className="text-[10px] text-pink-600 dark:text-pink-400 font-medium">
-                        Swipe cards in Magic Mode ✨
-                      </p>
+                      <p className="text-[10px] text-slate-400">Place bundle on nightstand</p>
                     </div>
                   </div>
                   <span className="text-xs">🪻</span>
                 </div>
 
-                {/* Sample Task 3 */}
+                {/* Task 4: Hydrate and stretch */}
                 <div className="p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 border border-pink-100 dark:border-purple-900/40 shadow-xs flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-5 h-5 rounded-full border-2 border-amber-300 dark:border-amber-600"></div>
+                    <div className="w-5 h-5 rounded-full border-2 border-emerald-500 bg-emerald-500 flex items-center justify-center text-white text-[10px]">
+                      ✓
+                    </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                        Hydrate and relax in sunlight
+                      <p className="text-xs font-semibold text-slate-400 line-through">
+                        Hydrate in warm sunlight 🌼
                       </p>
-                      <p className="text-[10px] text-slate-400">Expandable notes included</p>
+                      <p className="text-[10px] text-slate-400">10 mins deep breathing done</p>
                     </div>
                   </div>
                   <span className="text-xs">🌼</span>

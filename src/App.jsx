@@ -37,14 +37,14 @@ export function App() {
       setLoading(true);
       const data = await api.getTodos();
       
-      // If Firestore is brand new and empty, plant 3 lovely sample items!
+      // If Firestore is brand new or fallback, populate with your exact 4 tasks!
       if (!data || data.length === 0) {
         const seedItems = [
           {
-            title: "Pick fresh lavender from the morning garden 🪻",
-            note: "Place a small bundle on the nightstand for soothing lavender aroma and peaceful focus.",
-            flower: "lavender",
-            priority: "medium",
+            title: "Buy from Temu",
+            note: "I just need to order already",
+            flower: "rose",
+            priority: "high",
             completed: false,
           },
           {
@@ -52,6 +52,13 @@ export function App() {
             note: "Verify live Vercel URL, GitHub repository, clean Apple aesthetics, and responsive layout.",
             flower: "rose",
             priority: "high",
+            completed: true,
+          },
+          {
+            title: "Pick fresh lavender from the morning garden 🪻",
+            note: "Place a small bundle on the nightstand for soothing lavender aroma and peaceful focus.",
+            flower: "lavender",
+            priority: "medium",
             completed: false,
           },
           {
