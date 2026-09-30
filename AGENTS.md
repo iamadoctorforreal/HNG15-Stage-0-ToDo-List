@@ -105,3 +105,148 @@ npx vite build
 3. **Resilient UI State**: Optimistic UI updates should not violently revert if there is minor network latency. Handle fallbacks gracefully.
 4. **Lightweight Principles**: Prefer native web APIs (Web Audio API, Web Speech API, CSS variables) over heavy third-party npm packages.
 5. **Brand Integrity**: Maintain "Bloom by HERSPEW" branding and avoid using forbidden terminology (e.g. do not label sections "botanical").
+
+---
+
+## 🛠️ Environment Setup
+
+### Prerequisites
+* Python 3.10+
+* Node.js 18+ (avoid v24 on Windows — see Known Pitfalls)
+* npm or yarn
+
+### Backend Dependencies
+```bash
+pip install fastapi firebase-admin python-dotenv uvicorn httpx
+```
+
+### Frontend Dependencies
+```bash
+npm install
+```
+
+### Required `.env` File (project root)
+Create a `.env` file at the repository root with the following variables:
+```env
+FIREBASE_PROJECT_ID=hng15-stage-0
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@hng15-stage-0.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+```
+> ⚠️ The `FIREBASE_PRIVATE_KEY` must be wrapped in double quotes and use literal `\n` for newlines. The backend handles unescaping automatically.
+
+### Running Locally
+```bash
+# Backend (serves API + built frontend from dist/)
+python -m uvicorn api.index:app --reload --port 8000
+
+# Frontend dev build (generate dist/ for the backend to serve)
+npx vite build
+```
+
+---
+
+## 🚀 Deployment Workflow
+
+### Active Vercel Project
+* **Live URL**: `https://hng-15-stage-0-to-do-list-w5fc.vercel.app`
+* This is the **only** active deployment. An older project at `hng-15-stage-0-to-do-list.vercel.app` is defunct — ignore it.
+
+### Vercel Environment Variables
+The following **must** be set in the Vercel project's Environment Variables settings (Settings → Environment Variables):
+| Variable | Value |
+|----------|-------|
+| `FIREBASE_PROJECT_ID` | `hng15-stage-0` |
+| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-fbsvc@hng15-stage-0.iam.gserviceaccount.com` |
+| `FIREBASE_PRIVATE_KEY` | Full RSA private key (with real newlines or `\n` escapes) |
+
+### How Deploys Work
+1. Push to the `main` branch on GitHub.
+2. Vercel auto-detects the push and redeploys.
+3. After deploy, do a **hard refresh** (`Ctrl+Shift+R`) in the browser — Vercel's static cache can serve stale frontend bundles.
+
+### Vercel Project Structure
+* `vercel.json` routes all `/api/*` requests to the FastAPI serverless function at `api/index.py`.
+* The frontend is built by Vite into `dist/` and served as static files.
+* The SPA catch-all route in `api/index.py` (`/{full_path:path}`) **must remain at the very bottom** of the file or it will intercept API routes.
+
+---
+
+## 📝 Git Conventions
+
+### Commit Messages
+Use clear, descriptive commit messages. Prefix with a category when possible:
+* `feat:` — New feature (e.g. `feat: add Journal mode with notebooks and notes`)
+* `fix:` — Bug fix (e.g. `fix: task completion strikethrough no longer reverts on network error`)
+* `test:` — Adding or updating tests (e.g. `test: add notebook CRUD endpoint tests`)
+* `docs:` — Documentation changes (e.g. `docs: update AGENTS.md with deployment workflow`)
+* `chore:` — Maintenance tasks (e.g. `chore: clean up unused imports`)
+
+### Pushing to GitHub
+```bash
+git add -A
+git commit -m "feat: descriptive message here"
+git push origin main
+```
+> ⚠️ See **Known Pitfalls** below before pushing — certain git configs can cause fatal errors.
+
+---
+
+## 🗄️ Firestore Data Model
+
+All user data is scoped under per-user subcollections. **Never** create top-level flat collections.
+
+```
+firestore-root/
+└── users/
+    ├── demo/                          ← Demo profile (auto-seeded with rich data)
+    │   ├── todos/
+    │   │   ├── {todo_id}              ← { title, note, flower, priority, completed, created_at, updated_at }
+    │   │   └── ...
+    │   ├── notebooks/
+    │   │   ├── {notebook_id}          ← { name, emoji, created_at }
+    │   │   └── ...
+    │   └── notes/
+    │       ├── {note_id}              ← { notebook_id, title, content, word_count, created_at, updated_at }
+    │       └── ...
+    │
+    ├── user@example.com/              ← Real user (auto-seeded with 1 task + 1 notebook)
+    │   ├── todos/
+    │   ├── notebooks/
+    │   └── notes/
+    │
+    └── another@user.com/              ← Each user is fully isolated
+        ├── todos/
+        ├── notebooks/
+        └── notes/
+```
+
+### User ID Resolution
+* `demo@bloom.app` or users with `isDemo: true` → `"demo"`
+* All other users → `user.email.trim().toLowerCase()`
+* Backend sanitizes IDs: `re.sub(r'[^a-z0-9_\-\.@]', '_', user_id)`
+
+---
+
+## ⚠️ Known Pitfalls & Forbidden Patterns
+
+### 1. Git `http.postBuffer` Causes Out-of-Memory Crashes
+Setting `git config --global http.postBuffer 524288000` (500 MB) causes fatal "Out of memory" errors on push. **Always unset it before pushing:**
+```bash
+git config --global --unset http.postBuffer
+```
+
+### 2. SPA Catch-All Route Must Stay at the Bottom
+The `/{full_path:path}` route in `api/index.py` serves the frontend SPA. If it is placed above API routes, it will intercept `/api/*` requests and return HTML instead of JSON. **Always keep it as the very last route.**
+
+### 3. Node.js v24 + Windows + Spaces in Path
+Node.js v24 on Windows crashes esbuild during `vite dev` when the project path contains spaces (e.g. `HNG 15 Stage 0`). Workaround: use `python -m uvicorn` to serve the pre-built `dist/` instead of running `vite dev`.
+
+### 4. Vercel Static Cache
+After deploying, the browser may serve a cached version of the old frontend. Always do a hard refresh (`Ctrl+Shift+R`) after a new deploy to see changes.
+
+### 5. Python `datetime.utcnow()` Deprecation
+Python 3.12+ shows deprecation warnings for `datetime.datetime.utcnow()`. These are cosmetic and do not affect functionality, but new code should prefer `datetime.datetime.now(datetime.timezone.utc)` when possible.
+
+### 6. Never Use the Word "Botanical"
+The creator (HERSPEW) explicitly forbade using the word "botanical" in the UI. Use "floral", "garden", or "bloom" language instead.
+
