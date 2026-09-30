@@ -102,5 +102,108 @@ export const api = {
     }
     return await res.json();
   },
+
+  // ==========================
+  // NOTEBOOKS API
+  // ==========================
+  async getNotebooks(userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/notebooks?user_id=${encodeURIComponent(uid)}`, {
+      headers: { 'X-User-Id': uid }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to fetch notebooks');
+    }
+    return await res.json();
+  },
+
+  async createNotebook(data, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/notebooks?user_id=${encodeURIComponent(uid)}`, {
+      method: 'POST',
+      headers: getHeaders({ 'X-User-Id': uid }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create notebook');
+    }
+    return await res.json();
+  },
+
+  async deleteNotebook(id, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/notebooks/${id}?user_id=${encodeURIComponent(uid)}`, {
+      method: 'DELETE',
+      headers: { 'X-User-Id': uid }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to delete notebook');
+    }
+    return await res.json();
+  },
+
+  // ==========================
+  // NOTES (JOURNAL) API
+  // ==========================
+  async getNotes(notebookId, userId) {
+    const uid = userId || activeUserId;
+    let url = `${API_BASE}/notes?user_id=${encodeURIComponent(uid)}`;
+    if (notebookId) {
+      url += `&notebook_id=${encodeURIComponent(notebookId)}`;
+    }
+    const res = await fetch(url, {
+      headers: { 'X-User-Id': uid }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to fetch notes');
+    }
+    return await res.json();
+  },
+
+  async createNote(data, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/notes?user_id=${encodeURIComponent(uid)}`, {
+      method: 'POST',
+      headers: getHeaders({ 'X-User-Id': uid }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create note');
+    }
+    return await res.json();
+  },
+
+  async updateNote(id, updates, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/notes/${id}?user_id=${encodeURIComponent(uid)}`, {
+      method: 'PUT',
+      headers: getHeaders({ 'X-User-Id': uid }),
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to update note');
+    }
+    return await res.json();
+  },
+
+  async deleteNote(id, userId) {
+    const uid = userId || activeUserId;
+    const res = await fetch(`${API_BASE}/notes/${id}?user_id=${encodeURIComponent(uid)}`, {
+      method: 'DELETE',
+      headers: { 'X-User-Id': uid }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to delete note');
+    }
+    return await res.json();
+  },
 };
+
 

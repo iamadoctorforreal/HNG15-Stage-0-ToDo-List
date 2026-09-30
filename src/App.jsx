@@ -4,6 +4,7 @@ import { FloatingBotanicals } from './components/Flowers/FloatingBotanicals';
 import { SimpleMode } from './components/Simple/SimpleMode';
 import { MagicMode } from './components/Magic/MagicMode';
 import { CalendarInsights } from './components/Calendar/CalendarInsights';
+import { JournalMode } from './components/Journal/JournalMode';
 import { LandingPage } from './components/Landing/LandingPage';
 import { AuthModal } from './components/Auth/AuthModal';
 import { TodoModal } from './components/Modals/TodoModal';
@@ -16,6 +17,11 @@ export function App() {
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
+
+  // Sanctuary Journal state
+  const [notebooks, setNotebooks] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [journalLoading, setJournalLoading] = useState(false);
 
   // Authentication state
   const [currentUser, setCurrentUser] = useState(() => {
@@ -105,9 +111,88 @@ export function App() {
     }
   };
 
+  // Load journal notebooks & notes
+  const loadJournal = async (userToLoad = currentUser) => {
+    if (!userToLoad) return;
+    const uid = getEffectiveUserId(userToLoad);
+    try {
+      setJournalLoading(true);
+      const [nbs, nts] = await Promise.all([
+        api.getNotebooks(uid),
+        api.getNotes(null, uid)
+      ]);
+      setNotebooks(Array.isArray(nbs) ? nbs : []);
+      setNotes(Array.isArray(nts) ? nts : []);
+    } catch (err) {
+      console.warn("Could not load journal from cloud, using initial state:", err);
+      if (uid === 'demo') {
+        const demoNbs = [
+          { id: 'demo-nb-1', title: 'Morning Reflections', icon: '🌸', flower: 'rose', description: 'Peaceful morning intentions & gratitude', note_count: 1 },
+          { id: 'demo-nb-2', title: 'Daily Gratitude & Calm', icon: '🪻', flower: 'lavender', description: 'Tracking daily joys & serenity', note_count: 1 },
+          { id: 'demo-nb-3', title: 'Creative Seeds & Ideas', icon: '🌼', flower: 'daffodil', description: 'Brainstorms & gentle thoughts', note_count: 1 },
+        ];
+        const demoNotes = [
+          {
+            id: 'demo-note-1',
+            notebook_id: 'demo-nb-1',
+            title: 'Sunrise & Stillness in the Sanctuary',
+            content: 'Today the dawn light crept through the window in soft amber hues. Drinking warm herbal tea while listening to the birds in the garden. Today\'s intention is simple: move with calm focus, finish HNG Stage 0 with excellence, and nourish the spirit without rushing.',
+            flower: 'rose',
+            mood: 'calm',
+            word_count: 48,
+            created_at: new Date().toISOString()
+          },
+          {
+            id: 'demo-note-2',
+            notebook_id: 'demo-nb-2',
+            title: 'Three Little Joys of the Day',
+            content: '1. The sweet fragrance of blooming lavender after dawn rain.\n2. The crisp tactile feeling of smooth card swipes in Magic Mode.\n3. Making steady progress and finding joy in deliberate, thoughtful craftsmanship.',
+            flower: 'lavender',
+            mood: 'grateful',
+            word_count: 36,
+            created_at: new Date(Date.now() - 3600000 * 24).toISOString()
+          },
+          {
+            id: 'demo-note-3',
+            notebook_id: 'demo-nb-3',
+            title: 'Voice Journaling & Peaceful Software',
+            content: 'What if our digital tools felt like walking through a sunlit conservatory instead of a stressful inbox? Adding voice dictation lets thoughts flow without the tension of a keyboard.',
+            flower: 'daffodil',
+            mood: 'inspired',
+            word_count: 30,
+            created_at: new Date(Date.now() - 3600000 * 48).toISOString()
+          }
+        ];
+        setNotebooks(demoNbs);
+        setNotes(demoNotes);
+      } else {
+        const starterNb = [
+          { id: 'starter-nb-1', title: 'My Sanctuary Journal', icon: '🌸', flower: 'rose', description: 'Your personal haven for notes & reflections', note_count: 1 }
+        ];
+        const starterNote = [
+          {
+            id: 'starter-note-1',
+            notebook_id: 'starter-nb-1',
+            title: 'Welcome to your Journal 🌸',
+            content: 'Welcome to your sacred writing space. You can organize your thoughts across notebooks, check your writing streak in the activity graph above, or tap the microphone button to dictate thoughts effortlessly using browser voice-to-text. Breathe deeply and bloom.',
+            flower: 'rose',
+            mood: 'calm',
+            word_count: 42,
+            created_at: new Date().toISOString()
+          }
+        ];
+        setNotebooks(starterNb);
+        setNotes(starterNote);
+      }
+    } finally {
+      setJournalLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
       loadTodos(currentUser);
+      loadJournal(currentUser);
     }
   }, [currentUser]);
 
@@ -118,15 +203,86 @@ export function App() {
       localStorage.setItem('bloom_current_user', JSON.stringify(user));
     }
     loadTodos(user);
+    loadJournal(user);
   };
 
   const handleLogout = () => {
     sounds.playPop();
     setCurrentUser(null);
     setTodos([]);
+    setNotebooks([]);
+    setNotes([]);
     setApiUserId('demo');
     if (typeof window !== 'undefined') {
       localStorage.removeItem('bloom_current_user');
+    }
+  };
+
+  // Journal Handlers
+  const handleCreateNotebook = async (data) => {
+    const tempId = `nb-${Date.now()}`;
+    const optimisticNb = { id: tempId, note_count: 0, created_at: new Date().toISOString(), ...data };
+    setNotebooks(prev => [...prev, optimisticNb]);
+    try {
+      const created = await api.createNotebook(data);
+      setNotebooks(prev => prev.map(nb => nb.id === tempId ? created : nb));
+    } catch (e) {
+      console.warn("Could not sync notebook to cloud, kept local:", e);
+    }
+  };
+
+  const handleDeleteNotebook = async (id) => {
+    setNotebooks(prev => prev.filter(nb => nb.id !== id));
+    setNotes(prev => prev.filter(n => n.notebook_id !== id));
+    try {
+      await api.deleteNotebook(id);
+    } catch (e) {
+      console.warn("Could not delete notebook in cloud, kept local:", e);
+    }
+  };
+
+  const handleCreateNote = async (data) => {
+    const tempId = `note-${Date.now()}`;
+    const wordCount = data.content ? data.content.trim().split(/\s+/).length : 0;
+    const optimisticNote = {
+      id: tempId,
+      ...data,
+      word_count: wordCount,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    setNotes(prev => [optimisticNote, ...prev]);
+    // increment notebook count
+    setNotebooks(prev => prev.map(nb => nb.id === data.notebook_id ? { ...nb, note_count: (nb.note_count || 0) + 1 } : nb));
+
+    try {
+      const created = await api.createNote(data);
+      setNotes(prev => prev.map(n => n.id === tempId ? created : n));
+    } catch (e) {
+      console.warn("Could not sync note to cloud, kept local:", e);
+    }
+  };
+
+  const handleUpdateNote = async (id, updates) => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...updates, updated_at: new Date().toISOString() } : n));
+    try {
+      const updated = await api.updateNote(id, updates);
+      setNotes(prev => prev.map(n => n.id === id ? updated : n));
+    } catch (e) {
+      console.warn("Could not sync note update to cloud, kept local:", e);
+    }
+  };
+
+  const handleDeleteNote = async (id) => {
+    const target = notes.find(n => n.id === id);
+    setNotes(prev => prev.filter(n => n.id !== id));
+    if (target) {
+      setNotebooks(prev => prev.map(nb => nb.id === target.notebook_id ? { ...nb, note_count: Math.max(0, (nb.note_count || 1) - 1) } : nb));
+    }
+    try {
+      await api.deleteNote(id);
+    } catch (e) {
+      console.warn("Could not sync note deletion to cloud, kept local:", e);
     }
   };
 
@@ -262,6 +418,19 @@ export function App() {
                 todos={todos}
                 onToggleTodo={handleToggleTodo}
                 onOpenAddModal={openAddModal}
+              />
+            )}
+
+            {mode === 'journal' && (
+              <JournalMode
+                notebooks={notebooks}
+                notes={notes}
+                loading={journalLoading}
+                onCreateNotebook={handleCreateNotebook}
+                onDeleteNotebook={handleDeleteNotebook}
+                onCreateNote={handleCreateNote}
+                onUpdateNote={handleUpdateNote}
+                onDeleteNote={handleDeleteNote}
               />
             )}
           </main>

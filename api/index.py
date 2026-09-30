@@ -83,7 +83,113 @@ class TodoResponse(BaseModel):
     created_at: str
     updated_at: str
 
+# Pydantic Models for Notebooks & Notes
+class NotebookCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    flower: Optional[str] = "rose"
+    icon: Optional[str] = "🌸"
+    description: Optional[str] = ""
+
+class NotebookResponse(BaseModel):
+    id: str
+    title: str
+    flower: str = "rose"
+    icon: str = "🌸"
+    description: str = ""
+    note_count: int = 0
+    created_at: str
+
+class NoteCreate(BaseModel):
+    notebook_id: str
+    title: str = Field(..., min_length=1, max_length=200)
+    content: Optional[str] = ""
+    flower: Optional[str] = "rose"
+    mood: Optional[str] = "calm"
+
+class NoteUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    flower: Optional[str] = None
+    notebook_id: Optional[str] = None
+    mood: Optional[str] = None
+
+class NoteResponse(BaseModel):
+    id: str
+    notebook_id: str
+    title: str
+    content: str = ""
+    flower: str = "rose"
+    mood: str = "calm"
+    word_count: int = 0
+    created_at: str
+    updated_at: str
+
 # Pre-populated seed data
+DEMO_SEED_NOTEBOOKS = [
+    {
+        "id": "demo-nb-1",
+        "title": "Morning Reflections",
+        "flower": "rose",
+        "icon": "🌸",
+        "description": "Peaceful morning intentions, grounding rituals & gratitude",
+    },
+    {
+        "id": "demo-nb-2",
+        "title": "Daily Gratitude & Calm",
+        "flower": "lavender",
+        "icon": "🪻",
+        "description": "Tracking daily little joys and moments of serenity",
+    },
+    {
+        "id": "demo-nb-3",
+        "title": "Creative Seeds & Ideas",
+        "flower": "daffodil",
+        "icon": "🌼",
+        "description": "Brainstorms, new thoughts, and inspirations",
+    }
+]
+
+DEMO_SEED_NOTES = [
+    {
+        "notebook_id": "demo-nb-1",
+        "title": "Sunrise & Stillness in the Sanctuary",
+        "content": "Today the dawn light crept through the window in soft amber hues. Drinking warm herbal tea while listening to the birds in the garden. Today's intention is simple: move with calm focus, finish HNG Stage 0 with excellence, and nourish the spirit without rushing.",
+        "flower": "rose",
+        "mood": "calm",
+        "word_count": 48
+    },
+    {
+        "notebook_id": "demo-nb-2",
+        "title": "Three Little Joys of the Day",
+        "content": "1. The sweet fragrance of blooming lavender after dawn rain.\n2. The crisp tactile feeling of smooth card swipes in Magic Mode.\n3. Making steady progress and finding joy in deliberate, thoughtful craftsmanship.",
+        "flower": "lavender",
+        "mood": "grateful",
+        "word_count": 36
+    },
+    {
+        "notebook_id": "demo-nb-3",
+        "title": "Voice Journaling & Peaceful Software",
+        "content": "What if our digital tools felt like walking through a sunlit conservatory instead of a stressful inbox? Adding voice dictation lets thoughts flow without the tension of a keyboard.",
+        "flower": "daffodil",
+        "mood": "inspired",
+        "word_count": 30
+    }
+]
+
+NEW_USER_SEED_NOTEBOOK = {
+    "title": "My Sanctuary Journal",
+    "flower": "rose",
+    "icon": "🌸",
+    "description": "Your personal haven for notes and reflections",
+}
+
+NEW_USER_SEED_NOTE = {
+    "title": "Welcome to your Journal 🌸",
+    "content": "Welcome to your sacred writing space. You can organize your thoughts across notebooks, check your writing streak in the activity graph above, or tap the microphone button to dictate thoughts effortlessly using browser voice-to-text. Breathe deeply and bloom.",
+    "flower": "rose",
+    "mood": "calm",
+    "word_count": 42
+}
 DEMO_SEED_ITEMS = [
     {
         "title": "Buy from Temu",
@@ -136,6 +242,22 @@ def get_user_todos_collection(user_id: Optional[str] = None):
     clean_id = re.sub(r'[^a-z0-9_\-\.@]', '_', clean_id)
     db = get_firestore_client()
     return db.collection("users").document(clean_id).collection("todos"), clean_id
+
+def get_user_notebooks_collection(user_id: Optional[str] = None):
+    clean_id = (user_id or "demo").strip().lower()
+    if not clean_id or clean_id == "demo@bloom.app":
+        clean_id = "demo"
+    clean_id = re.sub(r'[^a-z0-9_\-\.@]', '_', clean_id)
+    db = get_firestore_client()
+    return db.collection("users").document(clean_id).collection("notebooks"), clean_id
+
+def get_user_notes_collection(user_id: Optional[str] = None):
+    clean_id = (user_id or "demo").strip().lower()
+    if not clean_id or clean_id == "demo@bloom.app":
+        clean_id = "demo"
+    clean_id = re.sub(r'[^a-z0-9_\-\.@]', '_', clean_id)
+    db = get_firestore_client()
+    return db.collection("users").document(clean_id).collection("notes"), clean_id
 
 # Serve built frontend from dist if present (unified local development)
 dist_path = Path(__file__).resolve().parent.parent / "dist"
@@ -391,6 +513,329 @@ def delete_todo(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting todo: {str(e)}"
+        )
+
+# ==========================================
+# NOTEBOOKS & NOTES (SANCTUARY JOURNAL) API
+# ==========================================
+
+@app.get("/api/notebooks", response_model=List[NotebookResponse])
+@app.get("/notebooks", response_model=List[NotebookResponse])
+def get_notebooks(
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notebooks_ref, clean_id = get_user_notebooks_collection(effective_user)
+        notes_ref, _ = get_user_notes_collection(effective_user)
+        nb_docs = list(notebooks_ref.stream())
+
+        # If zero notebooks, seed initial notebooks & notes
+        if len(nb_docs) == 0:
+            now = datetime.datetime.utcnow().isoformat()
+            if clean_id == "demo":
+                for nb in DEMO_SEED_NOTEBOOKS:
+                    nb_id = nb["id"]
+                    notebooks_ref.document(nb_id).set({
+                        "title": nb["title"],
+                        "flower": nb["flower"],
+                        "icon": nb["icon"],
+                        "description": nb["description"],
+                        "created_at": now
+                    })
+                for note in DEMO_SEED_NOTES:
+                    notes_ref.add({
+                        **note,
+                        "created_at": now,
+                        "updated_at": now
+                    })
+            else:
+                # 1 starter notebook for new users
+                _, doc_ref = notebooks_ref.add({
+                    **NEW_USER_SEED_NOTEBOOK,
+                    "created_at": now
+                })
+                notes_ref.add({
+                    **NEW_USER_SEED_NOTE,
+                    "notebook_id": doc_ref.id,
+                    "created_at": now,
+                    "updated_at": now
+                })
+
+            nb_docs = list(notebooks_ref.stream())
+
+        # Fetch all notes to compute note counts
+        all_notes = list(notes_ref.stream())
+        count_map = {}
+        for n in all_notes:
+            nd = n.to_dict()
+            nid = nd.get("notebook_id", "")
+            count_map[nid] = count_map.get(nid, 0) + 1
+
+        result = []
+        for doc in nb_docs:
+            d = doc.to_dict()
+            result.append({
+                "id": doc.id,
+                "title": d.get("title", ""),
+                "flower": d.get("flower", "rose"),
+                "icon": d.get("icon", "🌸"),
+                "description": d.get("description", ""),
+                "note_count": count_map.get(doc.id, 0),
+                "created_at": d.get("created_at", datetime.datetime.utcnow().isoformat()),
+            })
+
+        result.sort(key=lambda x: x.get("created_at", ""))
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching notebooks: {str(e)}"
+        )
+
+@app.post("/api/notebooks", response_model=NotebookResponse, status_code=status.HTTP_201_CREATED)
+def create_notebook(
+    notebook: NotebookCreate,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notebooks_ref, clean_id = get_user_notebooks_collection(effective_user)
+        now = datetime.datetime.utcnow().isoformat()
+        nb_data = {
+            "title": notebook.title.strip(),
+            "flower": notebook.flower or "rose",
+            "icon": notebook.icon or "🌸",
+            "description": (notebook.description or "").strip(),
+            "created_at": now
+        }
+        _, doc_ref = notebooks_ref.add(nb_data)
+        return {
+            "id": doc_ref.id,
+            "note_count": 0,
+            **nb_data
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating notebook: {str(e)}"
+        )
+
+@app.delete("/api/notebooks/{notebook_id}")
+def delete_notebook(
+    notebook_id: str,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notebooks_ref, clean_id = get_user_notebooks_collection(effective_user)
+        notes_ref, _ = get_user_notes_collection(effective_user)
+
+        doc_ref = notebooks_ref.document(notebook_id)
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Notebook not found")
+
+        doc_ref.delete()
+
+        # Delete notes belonging to this notebook
+        notes_to_del = notes_ref.where("notebook_id", "==", notebook_id).stream()
+        for nd in notes_to_del:
+            notes_ref.document(nd.id).delete()
+
+        return {"status": "deleted", "id": notebook_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting notebook: {str(e)}"
+        )
+
+@app.get("/api/notes", response_model=List[NoteResponse])
+@app.get("/notes", response_model=List[NoteResponse])
+def get_notes(
+    notebook_id: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notes_ref, clean_id = get_user_notes_collection(effective_user)
+        
+        if notebook_id:
+            docs = list(notes_ref.where("notebook_id", "==", notebook_id).stream())
+        else:
+            docs = list(notes_ref.stream())
+
+        result = []
+        for doc in docs:
+            d = doc.to_dict()
+            content = d.get("content", "")
+            w_count = d.get("word_count", len(content.strip().split()) if content.strip() else 0)
+            result.append({
+                "id": doc.id,
+                "notebook_id": d.get("notebook_id", ""),
+                "title": d.get("title", ""),
+                "content": content,
+                "flower": d.get("flower", "rose"),
+                "mood": d.get("mood", "calm"),
+                "word_count": w_count,
+                "created_at": d.get("created_at", datetime.datetime.utcnow().isoformat()),
+                "updated_at": d.get("updated_at", datetime.datetime.utcnow().isoformat()),
+            })
+
+        result.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching notes: {str(e)}"
+        )
+
+@app.post("/api/notes", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
+def create_note(
+    note: NoteCreate,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notes_ref, clean_id = get_user_notes_collection(effective_user)
+        now = datetime.datetime.utcnow().isoformat()
+        content = (note.content or "").strip()
+        word_count = len(content.split()) if content else 0
+        note_data = {
+            "notebook_id": note.notebook_id,
+            "title": note.title.strip(),
+            "content": content,
+            "flower": note.flower or "rose",
+            "mood": note.mood or "calm",
+            "word_count": word_count,
+            "created_at": now,
+            "updated_at": now,
+        }
+        _, doc_ref = notes_ref.add(note_data)
+        return {
+            "id": doc_ref.id,
+            **note_data
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating note: {str(e)}"
+        )
+
+@app.get("/api/notes/{note_id}", response_model=NoteResponse)
+def get_note(
+    note_id: str,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notes_ref, clean_id = get_user_notes_collection(effective_user)
+        doc = notes_ref.document(note_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Note not found")
+        d = doc.to_dict()
+        content = d.get("content", "")
+        return {
+            "id": doc.id,
+            "notebook_id": d.get("notebook_id", ""),
+            "title": d.get("title", ""),
+            "content": content,
+            "flower": d.get("flower", "rose"),
+            "mood": d.get("mood", "calm"),
+            "word_count": d.get("word_count", len(content.strip().split()) if content.strip() else 0),
+            "created_at": d.get("created_at", datetime.datetime.utcnow().isoformat()),
+            "updated_at": d.get("updated_at", datetime.datetime.utcnow().isoformat()),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving note: {str(e)}"
+        )
+
+@app.put("/api/notes/{note_id}", response_model=NoteResponse)
+def update_note(
+    note_id: str,
+    updates: NoteUpdate,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notes_ref, clean_id = get_user_notes_collection(effective_user)
+        doc_ref = notes_ref.document(note_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Note not found")
+
+        current_data = doc.to_dict()
+        update_dict = {}
+
+        if updates.title is not None:
+            update_dict["title"] = updates.title.strip()
+        if updates.content is not None:
+            content = updates.content.strip()
+            update_dict["content"] = content
+            update_dict["word_count"] = len(content.split()) if content else 0
+        if updates.flower is not None:
+            update_dict["flower"] = updates.flower
+        if updates.notebook_id is not None:
+            update_dict["notebook_id"] = updates.notebook_id
+        if updates.mood is not None:
+            update_dict["mood"] = updates.mood
+
+        update_dict["updated_at"] = datetime.datetime.utcnow().isoformat()
+        doc_ref.update(update_dict)
+
+        current_data.update(update_dict)
+        return {
+            "id": doc_ref.id,
+            "notebook_id": current_data.get("notebook_id", ""),
+            "title": current_data.get("title", ""),
+            "content": current_data.get("content", ""),
+            "flower": current_data.get("flower", "rose"),
+            "mood": current_data.get("mood", "calm"),
+            "word_count": current_data.get("word_count", 0),
+            "created_at": current_data.get("created_at", ""),
+            "updated_at": current_data.get("updated_at", ""),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating note: {str(e)}"
+        )
+
+@app.delete("/api/notes/{note_id}")
+def delete_note(
+    note_id: str,
+    user_id: Optional[str] = Query(None),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    try:
+        effective_user = user_id or x_user_id or "demo"
+        notes_ref, clean_id = get_user_notes_collection(effective_user)
+        doc_ref = notes_ref.document(note_id)
+        if not doc_ref.get().exists:
+            raise HTTPException(status_code=404, detail="Note not found")
+
+        doc_ref.delete()
+        return {"status": "deleted", "id": note_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting note: {str(e)}"
         )
 
 # Serve Frontend SPA from dist

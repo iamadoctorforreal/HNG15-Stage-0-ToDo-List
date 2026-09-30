@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Volume2, VolumeX, Sparkles, ListTodo, Calendar, Heart } from 'lucide-react';
+import { Sun, Moon, Volume2, VolumeX, Sparkles, ListTodo, Calendar, Heart, BookOpen } from 'lucide-react';
 import { useApp } from '../../context/ThemeContext';
 import { sounds } from '../../utils/soundEffects';
 
@@ -40,8 +40,8 @@ export const Navbar = ({ isConnected, currentUser, onLogout }) => {
           </div>
         </div>
 
-        {/* Center: Mode Switcher (Simple vs Magic vs Calendar) */}
-        <div className="relative bg-slate-200/60 dark:bg-slate-800/60 p-1 rounded-xl flex items-center shadow-inner">
+        {/* Center: Mode Switcher (Simple vs Magic vs Calendar vs Journal) */}
+        <div className="relative bg-slate-200/60 dark:bg-slate-800/60 p-1 rounded-xl flex items-center shadow-inner flex-wrap gap-0.5">
           <button
             onClick={() => switchMode('simple')}
             className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors duration-200 ${
@@ -76,6 +76,18 @@ export const Navbar = ({ isConnected, currentUser, onLogout }) => {
           >
             <Calendar className="w-3.5 h-3.5 text-purple-500" />
             <span>Calendar</span>
+          </button>
+
+          <button
+            onClick={() => switchMode('journal')}
+            className={`relative z-10 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors duration-200 ${
+              mode === 'journal'
+                ? 'text-pink-900 dark:text-pink-100'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-rose-500" />
+            <span>Journal</span>
           </button>
         </div>
 
